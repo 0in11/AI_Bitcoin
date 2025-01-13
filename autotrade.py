@@ -27,7 +27,6 @@ from selenium.webdriver.common.keys import Keys
 
 import warnings
 import time
-from selenium.webdriver.chrome.service import Service as ChromeService
 from selenium.webdriver.common.keys import Keys
 import logging
 from datetime import datetime, timedelta
@@ -169,18 +168,41 @@ class NewsCrawler:
     def __init__(self):
         warnings.filterwarnings(action='ignore')
         self.driver = self._initialize_driver()
+    
+    # Local
+    # def _initialize_driver(self):
+    #     """웹드라이버 초기화"""
+    #     options = webdriver.ChromeOptions()
+    #     options.add_argument("--ignore-local-proxy")
+    #     options.add_argument("--headless")  # 디버깅을 위해 헤드리스 모드 비활성화
         
+    #     try:
+    #         driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), 
+    #                                 options=options)
+    #     except:
+    #         driver = webdriver.Chrome()
+            
+    #     return driver
+    
+    # EC2 Server
     def _initialize_driver(self):
-        """웹드라이버 초기화"""
+        """웹드라이버 초기화 - EC2 환경에 맞게 설정"""
         options = webdriver.ChromeOptions()
-        options.add_argument("--ignore-local-proxy")
-        options.add_argument("--headless")  # 디버깅을 위해 헤드리스 모드 비활성화
+        
+        # EC2 서버 환경을 위한 필수 옵션들
+        options.add_argument("--headless")  # 헤드리스 모드 필수
+        options.add_argument("--no-sandbox")  # 리눅스 환경 필수
+        options.add_argument("--disable-dev-shm-usage")  # 메모리 관련 옵션
+        options.add_argument("--disable-gpu")  # GPU 가속 비활성화
+        options.add_argument("--ignore-local-proxy")  # 프록시 설정 무시
         
         try:
-            driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), 
-                                    options=options)
-        except:
-            driver = webdriver.Chrome()
+            # EC2의 크롬드라이버 경로 지정
+            service = Service('/usr/bin/chromedriver')
+            driver = webdriver.Chrome(service=service, options=options)
+        except Exception as e:
+            print(f"ChromeDriver 초기화 오류: {e}")
+            raise
             
         return driver
     
@@ -247,21 +269,43 @@ def get_bitcoin_news():
         if 'crawler' in locals():
             crawler.close()
 
-def setup_chrome_options():
-    chrome_options = Options()
-    chrome_options.add_argument("--start-maximized")
-    chrome_options.add_argument("--headless")  # 디버깅을 위해 헤드리스 모드 비활성화
-    chrome_options.add_argument("--disable-gpu")
-    chrome_options.add_argument("--no-sandbox")
-    chrome_options.add_argument("--disable-dev-shm-usage")
-    chrome_options.add_experimental_option('excludeSwitches', ['enable-logging'])
-    return chrome_options
+# 로컬용용
+# def setup_chrome_options():
+#     chrome_options = Options()
+#     chrome_options.add_argument("--start-maximized")
+#     chrome_options.add_argument("--headless")  # 디버깅을 위해 헤드리스 모드 비활성화
+#     chrome_options.add_argument("--disable-gpu")
+#     chrome_options.add_argument("--no-sandbox")
+#     chrome_options.add_argument("--disable-dev-shm-usage")
+#     chrome_options.add_experimental_option('excludeSwitches', ['enable-logging'])
+#     return chrome_options
 
+# def create_driver():
+#     logger.info("ChromeDriver 설정 중...")
+#     service = Service(ChromeDriverManager().install())
+#     driver = webdriver.Chrome(service=service, options=setup_chrome_options())
+#     return driver
+
+# EC2 서버용
 def create_driver():
     logger.info("ChromeDriver 설정 중...")
-    service = Service(ChromeDriverManager().install())
-    driver = webdriver.Chrome(service=service, options=setup_chrome_options())
-    return driver
+    try:
+        chrome_options = Options()
+        chrome_options.add_argument("--headless")  # 헤드리스 모드 사용
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--disable-dev-shm-usage")
+        chrome_options.add_argument("--disable-gpu")
+
+        service = Service('/usr/bin/chromedriver')  # Specify the path to the ChromeDriver executable
+
+        # Initialize the WebDriver with the specified options
+        driver = webdriver.Chrome(service=service, options=chrome_options)
+
+        return driver
+    except Exception as e:
+        logger.error(f"ChromeDriver 생성 중 오류 발생: {e}")
+        raise
+
 
 def click_element_by_xpath(driver, xpath, element_name, wait_time=10):
     try:
@@ -617,13 +661,11 @@ def ai_trading():
     # 데이터베이스 연결 종료
     conn.close()
 
-ai_trading()
-
-# # Main loop
-# while True:
-#     try:
-#         ai_trading()
-#         time.sleep(3600 * 4)  # 4시간마다 실행
-#     except Exception as e:
-#         logger.error(f"An error occurred: {e}")
-#         time.sleep(300)  # 오류 발생 시 5분 후 재시도
+# Main loop
+while True:
+    try:
+        ai_trading()
+        time.sleep(3600 * 4)  # 4시간마다 실행
+    except Exception as e:
+        logger.error(f"An error occurred: {e}")
+        time.sleep(300)  # 오류 발생 시 5분 후 재시도
