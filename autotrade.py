@@ -404,8 +404,11 @@ def capture_and_encode_screenshot(driver, timeframe):
         
         # 현재 스크립트의 경로를 가져옴
         script_dir = os.path.dirname(os.path.abspath(__file__))
-        chart_img_path = os.path.join(script_dir, 'chart_img')
-        file_path = os.path.join(chart_img_path, filename)
+        #chart_img_path = os.path.join(script_dir, 'chart_img')
+        #file_path = os.path.join(chart_img_path, filename)
+
+        # 파일 저장 경로 설정
+        file_path = os.path.join(script_dir, filename)
         
         # 이미지 파일로 저장
         img.save(file_path)
