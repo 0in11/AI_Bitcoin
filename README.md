@@ -1,6 +1,6 @@
 # 📈"AI BITCOIN AUTOTRADING"📈
 <br />
-
+<Inspiration of JOCOING's Youtube>
 ## 1. Project Overview
 - 프로젝트 이름: **"AI BITCOIN AUTOTRADING"**
 - 프로젝트 주제: ChatGPT를 이용한 비트코인 자동매매 시스템
