@@ -1,10 +1,10 @@
-# 📈"AI_BITCOIN_AUTOTRADING"📈
+# 📈"AI BITCOIN AUTOTRADING"📈
 <br />
 
 ## 1. Project Overview
-- 프로젝트 이름: **"긴급재난 대피 알림 서비스"**
-- 프로젝트 주제: 긴급한 재난 상황에서 신속한 대응을 위한 구체적인 정보를 맞춤 제공해주는 서비스
-- 프로젝트 기간: 2024.03~2024.04 (1개월)
+- 프로젝트 이름: **"AI BITCOIN AUTOTRADING"**
+- 프로젝트 주제: ChatGPT를 이용한 비트코인 자동매매 시스템
+- 프로젝트 기간: 2025.01 ~ 2025.01 (1개월)
 <br/>
 
 ## 2. Key Points
