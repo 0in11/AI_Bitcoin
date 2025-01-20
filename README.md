@@ -1,8 +1,6 @@
 # 📈"AI_BITCOIN_AUTOTRADING"📈
 <br />
 
-![Image](https://github.com/user-attachments/assets/e55b0dd7-57d5-4640-ad01-00442d5f6623)
-
 ## 1. Project Overview
 - 프로젝트 이름: **"긴급재난 대피 알림 서비스"**
 - 프로젝트 주제: 긴급한 재난 상황에서 신속한 대응을 위한 구체적인 정보를 맞춤 제공해주는 서비스
@@ -10,7 +8,7 @@
 <br/>
 
 ## 2. Key Points
-<img src="https://github.com/user-attachments/assets/7cc0749d-5833-4a4e-826d-3b69e2441459" width="800px"/>
+![Image](https://github.com/user-attachments/assets/e55b0dd7-57d5-4640-ad01-00442d5f6623)
 
 - **앱 PUSH알림 발송**:
   - 재난 문자를 수신하였을 때, 수신된 재난문자의 재난 종류의 따른 행동요령 제시
