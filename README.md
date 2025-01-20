@@ -1,7 +1,7 @@
 # 📈"AI_BITCOIN_AUTOTRADING"📈
 <br />
 <div align="center">
-  ![Image](https://github.com/user-attachments/assets/e55b0dd7-57d5-4640-ad01-00442d5f6623)
+  <img src="[https://github.com/user-attachments/assets/7cc0749d-5833-4a4e-826d-3b69e2441459](https://github.com/user-attachments/assets/e55b0dd7-57d5-4640-ad01-00442d5f6623)" width="800px"/>
 </div>
 <br/>
 <br/>
