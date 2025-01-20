@@ -1,7 +1,7 @@
 # 📈"AI_BITCOIN_AUTOTRADING"📈
 <br />
 <div align="center">
-  [ARCHITECTURE.pdf](https://github.com/user-attachments/files/18475342/ARCHITECTURE.pdf)
+  ![Image](https://github.com/user-attachments/assets/e55b0dd7-57d5-4640-ad01-00442d5f6623)
 </div>
 <br/>
 <br/>
