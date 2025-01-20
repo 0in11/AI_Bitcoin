@@ -1,7 +1,5 @@
 # 📈"AI BITCOIN AUTOTRADING"📈
 <br />
-<Inspiration of JOCOING's Youtube>
-<br />
 
 ## 1. Project Overview
 - 프로젝트 이름: **"AI BITCOIN AUTOTRADING"**
@@ -11,4 +9,8 @@
 
 ## 2. Key Points
 ![Image](https://github.com/user-attachments/assets/e55b0dd7-57d5-4640-ad01-00442d5f6623)
+
+
+<br/>
+<Inspiration of JOCOING's Youtube>
 
