@@ -13,15 +13,7 @@
 - 프로젝트 기간: 2024.03~2024.04 (1개월)
 <br/>
 
-## 2. Team Members
-Team: **"출발휴먼팀"**(5명)
-| 김명건 | 김재관 | 맹의현 | 유민균 | 진영인|
-|:------:|:------:|:------:|:------:|:------:|
-| [GitHub](https://github.com/) | [GitHub](https://github.com/) | [GitHub](https://github.com/maeng99) | [GitHub](https://github.com/) | [GitHub](https://github.com/) |
-
-<br/>
-
-## 3. Key Points
+## 2. Key Points
 <img src="https://github.com/user-attachments/assets/7cc0749d-5833-4a4e-826d-3b69e2441459" width="800px"/>
 
 - **앱 PUSH알림 발송**:
