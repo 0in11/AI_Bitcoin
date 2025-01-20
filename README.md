@@ -12,5 +12,5 @@
 
 
 <br/>
-- <Inspiration of JOCOING's Youtube>
+Inspiration of JOCOING's Youtube
 
