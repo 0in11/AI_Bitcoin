@@ -1,10 +1,5 @@
 # 📈"AI_BITCOIN_AUTOTRADING"📈
 <br />
-<div align="center">
-  ![Image](https://github.com/user-attachments/assets/e55b0dd7-57d5-4640-ad01-00442d5f6623)
-</div>
-<br/>
-<br/>
 
 ![Image](https://github.com/user-attachments/assets/e55b0dd7-57d5-4640-ad01-00442d5f6623)
 
