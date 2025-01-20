@@ -1,10 +1,3 @@
-<a href="#" target="_blank">
-<img src="https://github.com/user-attachments/assets/226747c3-f42e-48dd-b28d-50082b90f582" alt="배너" width="100%"/>
-</a>
-
-<br/>
-<br/>
-
 # 📈"AI_BITCOIN_AUTOTRADING"📈
 <br />
 <div align="center">
