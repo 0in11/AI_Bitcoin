@@ -7,7 +7,7 @@
 - 프로젝트 기간: 2025.01 ~ 2025.01 (1개월)
 <br/>
 
-## 2. Key Points
+## 2. ARCHITECTURE
 ![Image](https://github.com/user-attachments/assets/e55b0dd7-57d5-4640-ad01-00442d5f6623)
 
 
