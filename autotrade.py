@@ -108,7 +108,7 @@ def generate_reflection(trades_df, current_market_data):
     
     # OpenAI API 호출로 AI의 반성 일기 및 개선 사항 생성 요청
     response = client.chat.completions.create(
-        model="gpt-4o-2024-08-06",
+        model="gpt-4o",
         messages=[
             {
                 "role": "system",
@@ -194,42 +194,35 @@ class NewsCrawler:
         warnings.filterwarnings(action='ignore')
         self.driver = self._initialize_driver()
     
-    # Local
-    # def _initialize_driver(self):
-    #     """웹드라이버 초기화"""
-    #     options = webdriver.ChromeOptions()
-    #     options.add_argument("--ignore-local-proxy")
-    #     options.add_argument("--headless")  # 디버깅을 위해 헤드리스 모드 비활성화
-        
-    #     try:
-    #         driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), 
-    #                                 options=options)
-    #     except:
-    #         driver = webdriver.Chrome()
-            
-    #     return driver
-    
-    # EC2 Server
     def _initialize_driver(self):
-        """웹드라이버 초기화 - EC2 환경에 맞게 설정"""
-        options = webdriver.ChromeOptions()
+        """환경(local/ec2)에 따른 웹드라이버 초기화"""
+        env = os.getenv("ENVIRONMENT", "local")  # 환경변수 없으면 local 기본값
+        logger.info(f"ChromeDriver 설정 중... (환경: {env})")
         
-        # EC2 서버 환경을 위한 필수 옵션들
-        options.add_argument("--headless")  # 헤드리스 모드 필수
-        options.add_argument("--no-sandbox")  # 리눅스 환경 필수
-        options.add_argument("--disable-dev-shm-usage")  # 메모리 관련 옵션
-        options.add_argument("--disable-gpu")  # GPU 가속 비활성화
-        options.add_argument("--ignore-local-proxy")  # 프록시 설정 무시
+        # 기본 크롬 옵션 설정
+        chrome_options = Options()
+        chrome_options.add_argument("--headless")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--disable-dev-shm-usage")
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--ignore-local-proxy")
         
         try:
-            # EC2의 크롬드라이버 경로 지정
-            service = Service('/usr/bin/chromedriver')
-            driver = webdriver.Chrome(service=service, options=options)
-        except Exception as e:
-            print(f"ChromeDriver 초기화 오류: {e}")
-            raise
+            if env == "local":
+                chrome_options.add_experimental_option('excludeSwitches', ['enable-logging'])
+                from webdriver_manager.chrome import ChromeDriverManager
+                service = Service(ChromeDriverManager().install())
+            elif env == "ec2":
+                service = Service('/usr/bin/chromedriver')
+            else:
+                raise ValueError(f"지원하지 않는 환경입니다. local 또는 ec2만 가능: {env}")
+                
+            driver = webdriver.Chrome(service=service, options=chrome_options)
+            return driver
             
-        return driver
+        except Exception as e:
+            logger.error(f"ChromeDriver 초기화 오류: {e}")
+            raise
     
     def _find_and_click(self, xpath):
         """요소 찾아서 클릭"""
@@ -294,43 +287,29 @@ def get_bitcoin_news():
         if 'crawler' in locals():
             crawler.close()
 
-# 로컬용
-def setup_chrome_options():
+#### Selenium 관련 함수
+def create_driver():
+    env = os.getenv("ENVIRONMENT")
+    logger.info("ChromeDriver 설정 중...")
     chrome_options = Options()
-    chrome_options.add_argument("--start-maximized")
-    chrome_options.add_argument("--headless")  # 디버깅을 위해 헤드리스 모드 비활성화
-    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--headless")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
-    chrome_options.add_experimental_option('excludeSwitches', ['enable-logging'])
-    return chrome_options
-
-def create_driver():
-    logger.info("ChromeDriver 설정 중...")
-    service = Service(ChromeDriverManager().install())
-    driver = webdriver.Chrome(service=service, options=setup_chrome_options())
-    return driver
-
-# EC2 서버용
-# def create_driver():
-#     logger.info("ChromeDriver 설정 중...")
-#     try:
-#         chrome_options = Options()
-#         chrome_options.add_argument("--headless")  # 헤드리스 모드 사용
-#         chrome_options.add_argument("--no-sandbox")
-#         chrome_options.add_argument("--disable-dev-shm-usage")
-#         chrome_options.add_argument("--disable-gpu")
-
-#         service = Service('/usr/bin/chromedriver')  # Specify the path to the ChromeDriver executable
-
-#         # Initialize the WebDriver with the specified options
-#         driver = webdriver.Chrome(service=service, options=chrome_options)
-
-#         return driver
-#     except Exception as e:
-#         logger.error(f"ChromeDriver 생성 중 오류 발생: {e}")
-#         raise
-
+    chrome_options.add_argument("--disable-gpu")
+    try:
+        if env == "local":
+            chrome_options.add_experimental_option('excludeSwitches', ['enable-logging'])
+            from webdriver_manager.chrome import ChromeDriverManager
+            service = Service(ChromeDriverManager().install())
+        elif env == "ec2":
+            service = Service('/usr/bin/chromedriver')
+        else:
+            raise ValueError(f"Unsupported environment. Only local or ec2: {env}")
+        driver = webdriver.Chrome(service=service, options=chrome_options)
+        return driver
+    except Exception as e:
+        logger.error(f"ChromeDriver 생성 중 오류 발생: {e}")
+        raise   
 
 def click_element_by_xpath(driver, xpath, element_name, wait_time=10):
     try:
@@ -550,7 +529,7 @@ def ai_trading():
             
             # AI 모델에 반성 내용 제공
             response = client.chat.completions.create(
-                model="gpt-4o-2024-08-06",
+                model="gpt-4o",
                 messages=[
                     {
                 "role": "system",
