@@ -25,6 +25,7 @@ import sqlite3
 from datetime import datetime, timedelta
 import schedule
 import warnings
+from selenium.webdriver.common.keys import Keys
 
 # .env 파일에 저장된 환경 변수를 불러오기 (API 키 등)
 load_dotenv()
@@ -104,7 +105,7 @@ def generate_reflection(trades_df, current_market_data):
     
     # OpenAI API 호출로 AI의 반성 일기 및 개선 사항 생성 요청
     response = client.chat.completions.create(
-        model="gpt-4o-2024-08-06",
+        model="gpt-4",
         messages=[
             {
                 "role": "system",
@@ -306,32 +307,65 @@ def click_element_by_xpath(driver, xpath, element_name, wait_time=10):
         logger.error(f"{element_name} 요소를 찾을 수 없습니다.")
     except Exception as e:
         logger.error(f"{element_name} 클릭 중 오류 발생: {e}")
+
 # 차트 클릭하기
-def perform_chart_actions(driver):
+def perform_chart_actions(driver, timeframe, is_first_capture=False):
     # 시간 메뉴 클릭
     click_element_by_xpath(
         driver,
         "/html/body/div[1]/div[2]/div[3]/span/div/div/div[1]/div/div/cq-menu[1]",
         "시간 메뉴"
     )
-    # 1시간 옵션 선택
+    
+    # timeframe에 따른 xpath 선택
+    timeframe_xpath = {
+        "1h": "/html/body/div[1]/div[2]/div[3]/span/div/div/div[1]/div/div/cq-menu[1]/cq-menu-dropdown/cq-item[8]",
+        "5m": "/html/body/div[1]/div[2]/div[3]/span/div/div/div[1]/div/div/cq-menu[1]/cq-menu-dropdown/cq-item[4]"
+    }
+    
+    # 해당 시간봉 옵션 선택
     click_element_by_xpath(
         driver,
-        "/html/body/div[1]/div[2]/div[3]/span/div/div/div[1]/div/div/cq-menu[1]/cq-menu-dropdown/cq-item[8]",
-        "1시간 옵션"
+        timeframe_xpath[timeframe],
+        f"{timeframe} 옵션"
     )
+    
+    # 첫 번째 캡처에서만 지표 추가
+    if is_first_capture:
+        # 지표 메뉴 클릭
+        click_element_by_xpath(
+            driver,
+            "/html/body/div[1]/div[2]/div[3]/span/div/div/div[1]/div/div/cq-menu[3]",
+            "지표 메뉴"
+        )
+        
+        # 볼린저 밴드 선택
+        click_element_by_xpath(
+            driver,
+            "/html/body/div[1]/div[2]/div[3]/span/div/div/div[1]/div/div/cq-menu[3]/cq-menu-dropdown/cq-scroll/cq-studies/cq-studies-content/cq-item[15]",
+            "볼린저 밴드"
+        )
+        
     # 지표 메뉴 클릭
-    click_element_by_xpath(
-        driver,
-        "/html/body/div[1]/div[2]/div[3]/span/div/div/div[1]/div/div/cq-menu[3]",
-        "지표 메뉴"
-    )
-    # 볼린저 밴드 옵션 선택
-    click_element_by_xpath(
-        driver,
-        "/html/body/div[1]/div[2]/div[3]/span/div/div/div[1]/div/div/cq-menu[3]/cq-menu-dropdown/cq-scroll/cq-studies/cq-studies-content/cq-item[15]",
-        "볼린저 밴드 옵션"
-    )
+        click_element_by_xpath(
+            driver,
+            "/html/body/div[1]/div[2]/div[3]/span/div/div/div[1]/div/div/cq-menu[3]",
+            "지표 메뉴"
+        )
+
+        # RSI 선택
+        rsi_xpath = "/html/body/div[1]/div[2]/div[3]/span/div/div/div[1]/div/div/cq-menu[3]/cq-menu-dropdown/cq-scroll/cq-studies/cq-studies-content/cq-item[81]"
+        try:
+            rsi_element = driver.find_element("xpath", rsi_xpath)
+            driver.execute_script("arguments[0].scrollIntoView(true);", rsi_element)
+            time.sleep(1)
+            rsi_element.click()
+            logger.info("RSI 지표 클릭 완료")
+        except Exception as e:
+            logger.error(f"RSI 지표 클릭 중 오류: {e}")
+        
+        time.sleep(2)  # 지표 적용 대기
+
 # 스크린샷 캡쳐 및 base64 이미지 인코딩
 def capture_and_encode_screenshot(driver):
     try:
@@ -396,14 +430,14 @@ def ai_trading():
         logger.info("1시간봉 차트 작업 시작")
         perform_chart_actions(driver, "1h", is_first_capture=True)
         time.sleep(5)  # 차트 로딩 대기
-        chart_images["1h"] = capture_and_encode_screenshot(driver, "1h")
+        chart_images["1h"] = capture_and_encode_screenshot(driver)
         logger.info("1시간봉 차트 캡처 완료")
 
         # 5분봉 차트 캡처
         logger.info("5분봉 차트 작업 시작")
         perform_chart_actions(driver, "5m", is_first_capture=False)
         time.sleep(5)  # 차트 로딩 대기
-        chart_images["5m"] = capture_and_encode_screenshot(driver, "5m")
+        chart_images["5m"] = capture_and_encode_screenshot(driver)
         logger.info("5분봉 차트 캡처 완료")
 
     except WebDriverException as e:
@@ -441,7 +475,7 @@ def ai_trading():
             
             # AI 모델에 반성 내용 제공
             response = client.chat.completions.create(
-                model="gpt-4o-2024-08-06",
+                model="gpt-4",
                 messages=[
                     {
                         "role": "system",
@@ -531,6 +565,14 @@ def ai_trading():
             except Exception as e:
                 logger.error(f"Error parsing AI response: {e}")
                 return
+            """try:
+                content = response.choices[0].message.content
+                logger.info(f"API Response content: {content}")  # 응답 내용 확인
+                result = TradingDecision.model_validate_json(content)
+            except Exception as e:
+                logger.error(f"Error parsing AI response: {e}")
+                logger.error(f"Full response: {response}")  # 전체 응답 로깅
+                return"""
             
             logger.info(f"AI Decision: {result.decision.upper()}")
             logger.info(f"Decision Reason: {result.reason}")
