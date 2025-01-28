@@ -133,10 +133,18 @@ def generate_reflection(trades_df, current_market_data):
     )
 
     try:
-        response_content = response.choices[0].message.content
-        return response_content
+        content = response.choices[0].message.content
+        # 응답이 문자열인지 확인
+        if isinstance(content, str):
+            return content
+        else:
+            logger.error(f"Unexpected response format: {type(content)}")
+            return None
     except (IndexError, AttributeError) as e:
         logger.error(f"Error extracting response content: {e}")
+        return None
+    except Exception as e:
+        logger.error(f"Unexpected error while processing response: {e}")
         return None
 
 # 데이터프레임에 보조 지표를 추가하는 함수
@@ -460,7 +468,13 @@ def ai_trading():
 
             # Pydantic을 사용하여 AI의 트레이딩 결정 구조를 정의
             try:
-                result = TradingDecision.model_validate_json(response.choices[0].message.content)
+                content = response.choices[0].message.content
+                # 응답이 문자열인지 확인
+                if isinstance(content, str):
+                    result = TradingDecision.model_validate_json(content)
+                else:
+                    logger.error(f"Unexpected response format: {type(content)}")
+                    return
             except Exception as e:
                 logger.error(f"Error parsing AI response: {e}")
                 return
