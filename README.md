@@ -26,6 +26,20 @@
   - 투자 성과 자동 계산
   - 거래 분석 및 개선점 도출
 
+
+
+🛠 Technical Stack
+
+- Backend: Python 3.8+
+- AI/ML: OpenAI GPT-4, Technical Analysis Library
+- Database: SQLite
+- APIs: Upbit API, Alternative.me API
+- Libraries:
+  - Selenium (웹 크롤링)
+  - PyUpbit (거래소 API)
+  - Pandas (데이터 처리)
+  - TA-Lib (기술적 분석)
+
 <br/>
 Inspiration of JOCOING's Youtube
 
