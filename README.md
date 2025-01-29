@@ -6,6 +6,7 @@ GPT-4 기반 비트코인 자동매매 시스템으로, AWS EC2에서 실시간�
 ## 🏗️ ARCHITECTURE
 ![Image](https://github.com/user-attachments/assets/e55b0dd7-57d5-4640-ad01-00442d5f6623)
 
+
 ## ✨ 주요 기능
 
 - **실시간 시장 분석**
@@ -20,13 +21,13 @@ GPT-4 기반 비트코인 자동매매 시스템으로, AWS EC2에서 실시간�
   - GPT-4o를 활용한 데이터 분석
   - '워뇨띠'의 매매 전략 적용
   - Upbit API를 통한 자동 매수/매도 실행
+  - GPT-4o 기반 트레이딩 성과 분석 및 전략 최적화
 
 - **거래 기록 및 성과 분석**
   - SQLite 데이터베이스에 거래 내역 저장
   - 투자 성과 자동 계산
   - 거래 분석 및 개선점 도출
   - streamlit 기반 실시간 거래 내역 및 성과 분석 대시보드
-
 
 
 ## 🛠 Technical Stack
