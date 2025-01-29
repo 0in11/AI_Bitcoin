@@ -1,6 +1,6 @@
 # 📈"AI BITCOIN AUTOTRADING"📈
 
-GPT-4 기반 비트코인 자동매매 시스템으로, AWS EC2에서 실시간으로 구동되며 Streamlit 대시보드를 통해 모니터링할 수 있습니다.
+GPT-4o 기반 비트코인 자동매매 시스템으로, AWS EC2에서 실시간으로 구동되며 Streamlit 대시보드를 통해 모니터링할 수 있습니다.
 
 
 ## 🏗️ ARCHITECTURE
