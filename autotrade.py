@@ -197,16 +197,17 @@ class NewsCrawler:
         return elem.text
     
     def search_keyword(self, keyword):
-        """검색어로 뉴스 검색"""
         self.driver.get("https://www.google.com/search?q=%EB%89%B4%EC%8A%A4&tbm=nws")
-        time.sleep(5)
-    
-        # 검색창에 키워드 입력
-        search_box = self.driver.find_element("xpath", 
-            "/html/body/span/div/div/div/form/div[1]/div[1]/div[3]/div/div[2]/textarea")
-        search_box.clear() # 검색창 키워드 삭제
-        search_box.send_keys(keyword, Keys.ENTER)
-        time.sleep(1)
+        
+        try:
+            # 검색창이 나타날 때까지 기다리기
+            search_box = WebDriverWait(self.driver, 10).until(
+                EC.presence_of_element_located((By.XPATH, "//textarea[@aria-label='검색']"))
+            )
+            search_box.clear()
+            search_box.send_keys(keyword, Keys.ENTER)
+        except Exception as e:
+            print(f"검색창 찾기 실패: {e}")
         
     def crawl_news(self):
         """상위 5개 뉴스의 제목과 날짜만 크롤링"""
