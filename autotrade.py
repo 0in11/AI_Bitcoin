@@ -11,28 +11,21 @@ import requests
 import base64
 from PIL import Image
 import io
-
-# selenium
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from webdriver_manager.chrome import ChromeDriverManager
 from selenium.common.exceptions import TimeoutException, ElementClickInterceptedException, WebDriverException, NoSuchElementException
-from selenium.webdriver.chrome.service import Service as ChromeService
-from selenium.webdriver.common.keys import Keys
-
-
-import warnings
 import logging
-from datetime import datetime, timedelta
 from youtube_transcript_api import YouTubeTranscriptApi
 from pydantic import BaseModel
-from openai import OpenAI
 import sqlite3
+from datetime import datetime, timedelta
 import schedule
+import warnings
+from selenium.webdriver.common.keys import Keys
 
 # .env 파일에 저장된 환경 변수를 불러오기 (API 키 등)
 load_dotenv()
@@ -49,12 +42,13 @@ if not access or not secret:
     raise ValueError("Missing API keys. Please check your .env file.")
 upbit = pyupbit.Upbit(access, secret)
 
+# OpenAI 구조화된 출력 체크용 클래스
 class TradingDecision(BaseModel):
     decision: str
     percentage: int
     reason: str
 
-# DB 정의의
+# SQLite 데이터베이스 초기화 함수 - 거래 내역을 저장할 테이블을 생성
 def init_db():
     conn = sqlite3.connect('bitcoin_trades.db')
     c = conn.cursor()
@@ -72,6 +66,7 @@ def init_db():
     conn.commit()
     return conn
 
+# 거래 기록을 DB에 저장하는 함수
 def log_trade(conn, decision, percentage, reason, btc_balance, krw_balance, btc_avg_buy_price, btc_krw_price, reflection=''):
     c = conn.cursor()
     timestamp = datetime.now().isoformat()
@@ -81,6 +76,7 @@ def log_trade(conn, decision, percentage, reason, btc_balance, krw_balance, btc_
               (timestamp, decision, percentage, reason, btc_balance, krw_balance, btc_avg_buy_price, btc_krw_price, reflection))
     conn.commit()
 
+# 최근 투자 기록 조회
 def get_recent_trades(conn, days=7):
     c = conn.cursor()
     seven_days_ago = (datetime.now() - timedelta(days=days)).isoformat()
@@ -88,13 +84,14 @@ def get_recent_trades(conn, days=7):
     columns = [column[0] for column in c.description]
     return pd.DataFrame.from_records(data=c.fetchall(), columns=columns)
 
+# 최근 투자 기록을 기반으로 퍼포먼스 계산 (초기 잔고 대비 최종 잔고)
 def calculate_performance(trades_df):
     if trades_df.empty:
-        return 0
-    
+        return 0 # 기록이 없을 경우 0%로 설정
+    # 초기 잔고 계산 (KRW + BTC * 현재 가격)
     initial_balance = trades_df.iloc[-1]['krw_balance'] + trades_df.iloc[-1]['btc_balance'] * trades_df.iloc[-1]['btc_krw_price']
+    # 최종 잔고 계산
     final_balance = trades_df.iloc[0]['krw_balance'] + trades_df.iloc[0]['btc_balance'] * trades_df.iloc[0]['btc_krw_price']
-    
     return (final_balance - initial_balance) / initial_balance * 100
 
 # AI 모델을 사용하여 최근 투자 기록과 시장 데이터를 기반으로 분석 및 반성을 생성하는 함수
@@ -144,86 +141,51 @@ def generate_reflection(trades_df, current_market_data):
         logger.error(f"Error extracting response content: {e}")
         return None
 
-def get_db_connection():
-    return sqlite3.connect('bitcoin_trades.db')
-
-# 데이터베이스 초기화
-init_db()
-
-# 로깅 설정
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-load_dotenv()
-
+# 데이터프레임에 보조 지표를 추가하는 함수
 def add_indicators(df):
-    # 볼린저 밴드
+    # 볼린저 밴드 추가
     indicator_bb = ta.volatility.BollingerBands(close=df['close'], window=20, window_dev=2)
     df['bb_bbm'] = indicator_bb.bollinger_mavg()
     df['bb_bbh'] = indicator_bb.bollinger_hband()
     df['bb_bbl'] = indicator_bb.bollinger_lband()
     
-    # RSI
+    # RSI (Relative Strength Index) 추가
     df['rsi'] = ta.momentum.RSIIndicator(close=df['close'], window=14).rsi()
     
-    # MACD
+    # MACD (Moving Average Convergence Divergence) 추가
     macd = ta.trend.MACD(close=df['close'])
     df['macd'] = macd.macd()
     df['macd_signal'] = macd.macd_signal()
     df['macd_diff'] = macd.macd_diff()
     
-    # 이동평균선
+    # 이동평균선 (단기, 장기)
     df['sma_20'] = ta.trend.SMAIndicator(close=df['close'], window=20).sma_indicator()
     df['ema_12'] = ta.trend.EMAIndicator(close=df['close'], window=12).ema_indicator()
     
     return df
 
+# 공포 탐욕 지수 조회
 def get_fear_and_greed_index():
     url = "https://api.alternative.me/fng/"
-    response = requests.get(url)
-    if response.status_code == 200:
+    try:
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
         data = response.json()
         return data['data'][0]
-    else:
-        logger.error(f"Failed to fetch Fear and Greed Index. Status code: {response.status_code}")
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error fetching Fear and Greed Index: {e}")
         return None
 
-# 구글 뉴스 크롤링
+# 뉴스 데이터 가져오기
 class NewsCrawler:
     def __init__(self):
         warnings.filterwarnings(action='ignore')
-        self.driver = self._initialize_driver()
-    
-    def _initialize_driver(self):
-        """환경(local/ec2)에 따른 웹드라이버 초기화"""
-        env = os.getenv("ENVIRONMENT", "local")  # 환경변수 없으면 local 기본값
-        logger.info(f"ChromeDriver 설정 중... (환경: {env})")
-        
-        # 기본 크롬 옵션 설정
-        chrome_options = Options()
-        chrome_options.add_argument("--headless")
-        chrome_options.add_argument("--no-sandbox")
-        chrome_options.add_argument("--disable-dev-shm-usage")
-        chrome_options.add_argument("--disable-gpu")
-        chrome_options.add_argument("--ignore-local-proxy")
-        
         try:
-            if env == "local":
-                chrome_options.add_experimental_option('excludeSwitches', ['enable-logging'])
-                from webdriver_manager.chrome import ChromeDriverManager
-                service = Service(ChromeDriverManager().install())
-            elif env == "ec2":
-                service = Service('/usr/bin/chromedriver')
-            else:
-                raise ValueError(f"지원하지 않는 환경입니다. local 또는 ec2만 가능: {env}")
-                
-            driver = webdriver.Chrome(service=service, options=chrome_options)
-            return driver
-            
+            self.driver = create_driver()
+            logger.info("NewsCrawler 초기화 완료")
         except Exception as e:
-            logger.error(f"ChromeDriver 초기화 오류: {e}")
+            logger.error(f"NewsCrawler 초기화 실패: {e}")
             raise
-    
     def _find_and_click(self, xpath):
         """요소 찾아서 클릭"""
         elem = self.driver.find_element("xpath", xpath)
@@ -236,15 +198,34 @@ class NewsCrawler:
     
     def search_keyword(self, keyword):
         """검색어로 뉴스 검색"""
-        self.driver.get("https://www.google.com/search?q=%EB%89%B4%EC%8A%A4&sca_esv=07fe2ed8acd931f7&hl=ko&biw=1365&bih=911&tbm=nws&sxsrf=ADLYWILjupBNc67GtS37bqy0ovtxpmkhIg%3A1736322515218&ei=0y1-Z_GFDfGVvr0P292ggQE&ved=0ahUKEwixu_C10eWKAxXxiq8BHdsuKBAQ4dUDCA4&uact=5&oq=%EB%89%B4%EC%8A%A4&gs_lp=Egxnd3Mtd2l6LW5ld3MiBuuJtOyKpDIIEAAYgAQYsQMyCxAAGIAEGLEDGIMBMgsQABiABBixAxiDATILEAAYgAQYsQMYgwEyCBAAGIAEGLEDMgsQABiABBixAxiDATILEAAYgAQYsQMYgwEyCxAAGIAEGLEDGIMBMgQQABgDMgsQABiABBixAxiDAUjKElC8BFjvEHADeACQAQKYAaUBoAHkCaoBAzAuOLgBA8gBAPgBAZgCBqACxwaoAgCYAwGIBgGSBwMxLjWgB4Yo&sclient=gws-wiz-news")
-        time.sleep(3)
-        
+        self.driver.get("https://www.google.com/search?q=%EB%89%B4%EC%8A%A4&tbm=nws")
+        time.sleep(5)
+
+        try:
+            # iframe이 있는지 확인
+            iframes = self.driver.find_elements(By.TAG_NAME, "iframe")
+            if iframes:
+                # iframe으로 전환
+                self.driver.switch_to.frame(iframes[0])
+                
+                # 그 다음 검색창 찾기
+                search_box = self.driver.find_element("xpath", "/html/body/span/div/div/div/form/div[1]/div[1]/div[3]/div/div[2]/textarea")
+                search_box.clear()
+                search_box.send_keys(keyword, Keys.ENTER)
+                
+                # 다시 기본 컨텐츠로 전환
+                self.driver.switch_to.default_content()
+        except Exception as e:
+            print(f"Error: {e}")
+            # 에러 발생 시 현재 페이지 소스 출력
+            print("Page source:", self.driver.page_source)
+    
         # 검색창에 키워드 입력
-        search_box = self.driver.find_element("xpath", 
-            "/html/body/div[2]/div[2]/form/div[1]/div[1]/div[2]/div/div[2]/textarea")
+        """search_box = self.driver.find_element("xpath", 
+            "/html/body/span/div/div/div/form/div[1]/div[1]/div[3]/div/div[2]/textarea")
         search_box.clear() # 검색창 키워드 삭제
         search_box.send_keys(keyword, Keys.ENTER)
-        time.sleep(1)
+        time.sleep(1)"""
         
     def crawl_news(self):
         """상위 5개 뉴스의 제목과 날짜만 크롤링"""
@@ -272,7 +253,7 @@ class NewsCrawler:
     def close(self):
         """브라우저 종료"""
         self.driver.quit()
-
+        
 def get_bitcoin_news():
     """비트코인 뉴스 크롤링 함수"""
     try:
@@ -286,6 +267,17 @@ def get_bitcoin_news():
     finally:
         if 'crawler' in locals():
             crawler.close()
+        
+# 유튜브 자막 데이터 가져오기
+"""def get_combined_transcript(video_id):
+    try:
+        transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=['ko'])
+        combined_text = ' '.join(entry['text'] for entry in transcript)
+        return combined_text
+    except Exception as e:
+        logger.error(f"Error fetching YouTube transcript: {e}")
+        return ""
+"""
 
 #### Selenium 관련 함수
 def create_driver():
@@ -309,8 +301,9 @@ def create_driver():
         return driver
     except Exception as e:
         logger.error(f"ChromeDriver 생성 중 오류 발생: {e}")
-        raise   
+        raise
 
+# XPath로 Element 찾기
 def click_element_by_xpath(driver, xpath, element_name, wait_time=10):
     try:
         element = WebDriverWait(driver, wait_time).until(
@@ -334,6 +327,7 @@ def click_element_by_xpath(driver, xpath, element_name, wait_time=10):
     except Exception as e:
         logger.error(f"{element_name} 클릭 중 오류 발생: {e}")
 
+# 차트 클릭하기
 def perform_chart_actions(driver, timeframe, is_first_capture=False):
     # 시간 메뉴 클릭
     click_element_by_xpath(
@@ -391,55 +385,26 @@ def perform_chart_actions(driver, timeframe, is_first_capture=False):
         
         time.sleep(2)  # 지표 적용 대기
 
-def capture_and_encode_screenshot(driver, timeframe):
+# 스크린샷 캡쳐 및 base64 이미지 인코딩
+def capture_and_encode_screenshot(driver):
     try:
         # 스크린샷 캡처
         png = driver.get_screenshot_as_png()
-        
         # PIL Image로 변환
         img = Image.open(io.BytesIO(png))
-        
-        # 이미지 리사이즈
+        # 이미지가 클 경우 리사이즈 (OpenAI API 제한에 맞춤)
         img.thumbnail((2000, 2000))
-        
-        # 현재 시간을 파일명에 포함
-        current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"upbit_chart_{timeframe}_{current_time}.png"
-        
-        # 현재 스크립트의 경로를 가져옴
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-
-        #chart_img_path = os.path.join(script_dir, 'chart_img')
-        #file_path = os.path.join(chart_img_path, filename)
-
-        # 파일 저장 경로 설정
-        # file_path = os.path.join(script_dir, filename)
-        
-        # 이미지 파일로 저장
-        #img.save(file_path)
-        #logger.info(f"{timeframe} 스크린샷이 저장되었습니다: {file_path}")
-        
         # 이미지를 바이트로 변환
         buffered = io.BytesIO()
         img.save(buffered, format="PNG")
-        
         # base64로 인코딩
         base64_image = base64.b64encode(buffered.getvalue()).decode('utf-8')
-        
         return base64_image
     except Exception as e:
-        logger.error(f"{timeframe} 스크린샷 캡처 및 인코딩 중 오류 발생: {e}")
-        return None, None
+        logger.error(f"스크린샷 캡처 및 인코딩 중 오류 발생: {e}")
+        return None
 
-def get_combined_transcript(video_id):
-    try:
-        transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=['ko'])
-        combined_text = ' '.join(entry['text'] for entry in transcript)
-        return combined_text
-    except Exception as e:
-        logger.error(f"Error fetching YouTube transcript: {e}")
-        return ""
-
+### 메인 AI 트레이딩 로직
 def ai_trading():
     global upbit
     ### 데이터 가져오기
@@ -478,20 +443,20 @@ def ai_trading():
         driver = create_driver()
         driver.get("https://upbit.com/full_chart?code=CRIX.UPBIT.KRW-BTC")
         logger.info("페이지 로드 완료")
-        time.sleep(30)  # 페이지 로딩 대기 시간 증가
+        time.sleep(10)  # 페이지 로딩 대기 시간 증가
 
          # 1시간봉 차트 캡처
         logger.info("1시간봉 차트 작업 시작")
         perform_chart_actions(driver, "1h", is_first_capture=True)
         time.sleep(5)  # 차트 로딩 대기
-        chart_images["1h"] = capture_and_encode_screenshot(driver, "1h")
+        chart_images["1h"] = capture_and_encode_screenshot(driver)
         logger.info("1시간봉 차트 캡처 완료")
 
         # 5분봉 차트 캡처
         logger.info("5분봉 차트 작업 시작")
         perform_chart_actions(driver, "5m", is_first_capture=False)
         time.sleep(5)  # 차트 로딩 대기
-        chart_images["5m"] = capture_and_encode_screenshot(driver, "5m")
+        chart_images["5m"] = capture_and_encode_screenshot(driver)
         logger.info("5분봉 차트 캡처 완료")
 
     except WebDriverException as e:
@@ -504,7 +469,7 @@ def ai_trading():
         if driver:
             driver.quit()
 
-    # AI에게 데이터 제공하고 판단 받기
+    ### AI에게 데이터 제공하고 판단 받기
     client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     if not client.api_key:
         logger.error("OpenAI API key is missing or invalid.")
@@ -532,42 +497,40 @@ def ai_trading():
                 model="gpt-4o",
                 messages=[
                     {
-                "role": "system",
-                "content": f"""You are an expert in Bitcoin investing. Analyze the provided data and determine whether to buy, sell, or hold at the current moment. Consider the following in your analysis:
+                        "role": "system",
+                        "content": f"""You are an expert in Bitcoin investing. Analyze the provided data and determine whether to buy, sell, or hold at the current moment. Consider the following in your analysis:
 
-                - Technical indicators across multiple timeframes (1h and 5m charts)
-                - The 1-hour chart looks at long-term trends, while the 5-minute chart looks at short-term trends.
-                - Recent news headlines and their potential impact on Bitcoin price
-                - The Fear and Greed Index and its implications
-                - Overall market sentiment
-                - Patterns and trends visible in the chart image
-                - Recent trading performance and reflection
+                        - Technical indicators and market data
+                        - Recent news headlines and their potential impact on Bitcoin price
+                        - The Fear and Greed Index and its implications
+                        - Overall market sentiment
+                        - Patterns and trends visible in the chart image
+                        - Recent trading performance and reflection
 
-                Recent trading reflection:
-                {reflection}
+                        Recent trading reflection:
+                        {reflection}
 
-                Particularly important is to always refer to the trading method of 'Wonyyotti', a legendary Korean investor, to assess the current situation and make trading decisions. Wonyyotti's trading method is as follows:
+                        Particularly important is to always refer to the trading method of 'Wonyyotti', a legendary Korean investor, to assess the current situation and make trading decisions. Wonyyotti's trading method is as follows:
 
-                - Emphasize focusing on winning and paying attention to the charts you see rather than investing in high risk
-                - Reading the market by looking at charts, being sensitive to market shifts and changing your position lines accordingly (e.g., aggressive buying in rising markets and conservative selling in falling markets)
-                - Emphasizes the importance of not being overly influenced by market news or sharp movements
-                - Volume and candlesticks matter most
-                - Take a wait-and-see approach when the market is sideways or ambiguous
-                - How analyzing historical charts to determine entry, exit, and stop losses is key to trading strategy 
+                        - Emphasize focusing on winning and paying attention to the charts you see rather than investing in high risk
+                        - Reading the market by looking at charts, being sensitive to market shifts and changing your position lines accordingly (e.g., aggressive buying in rising markets and conservative selling in falling markets)
+                        - Emphasizes the importance of not being overly influenced by market news or sharp movements
+                        - Volume and candlesticks matter most
+                        - Take a wait-and-see approach when the market is sideways or ambiguous
+                        - How analyzing historical charts to determine entry, exit, and stop losses is key to trading strategy 
 
+                        Based on this trading method, analyze the current market situation and make a judgment by synthesizing it with the provided data and recent performance reflection.
 
-                Based on this trading method, analyze the current market situation and make a judgment by synthesizing it with the provided data.
+                        Response format:
+                        1. Decision (buy, sell, or hold)
+                        2. If the decision is 'buy', provide a percentage (1-100) of available KRW to use for buying.
+                        If the decision is 'sell', provide a percentage (1-100) of held BTC to sell.
+                        If the decision is 'hold', set the percentage to 0.
+                        3. Reason for your decision
 
-                Response format:
-                1. Decision (buy, sell, or hold)
-                2. If the decision is 'buy', provide a percentage (1-100) of available KRW to use for buying.
-                If the decision is 'sell', provide a percentage (1-100) of held BTC to sell.
-                If the decision is 'hold', set the percentage to 0.
-                3. Reason for your decision
-
-                Ensure that the percentage is an integer between 1 and 100 for buy/sell decisions, and exactly 0 for hold decisions.
-                Your percentage should reflect the strength of your conviction in the decision based on the analyzed data."""
-            },
+                        Ensure that the percentage is an integer between 1 and 100 for buy/sell decisions, and exactly 0 for hold decisions.
+                        Your percentage should reflect the strength of your conviction in the decision based on the analyzed data."""
+                    },
                     {
                         "role": "user",
                         "content": [
@@ -580,17 +543,17 @@ def ai_trading():
                 Recent news headlines: {json.dumps(news_headlines)}
                 Fear and Greed Index: {json.dumps(fear_greed_index)}"""
                             },
-        {
-                            "type": "image_url",
-                            "image_url": {
-                                "url": f"data:image/png;base64,{chart_images['1h']}"
-                            }
-                        },
-                        {
-                            "type": "image_url",
-                            "image_url": {
-                                "url": f"data:image/png;base64,{chart_images['5m']}"
-                            }
+                            {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": f"data:image/png;base64,{chart_images['1h']}"
+                                }
+                            },
+                            {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": f"data:image/png;base64,{chart_images['5m']}"
+                                }   
                         }
                         ]
                     }
@@ -621,6 +584,14 @@ def ai_trading():
             except Exception as e:
                 logger.error(f"Error parsing AI response: {e}")
                 return
+            """try:
+                content = response.choices[0].message.content
+                logger.info(f"API Response content: {content}")  # 응답 내용 확인
+                result = TradingDecision.model_validate_json(content)
+            except Exception as e:
+                logger.error(f"Error parsing AI response: {e}")
+                logger.error(f"Full response: {response}")  # 전체 응답 로깅
+                return"""
             
             logger.info(f"AI Decision: {result.decision.upper()}")
             logger.info(f"Decision Reason: {result.reason}")
@@ -706,9 +677,9 @@ if __name__ == "__main__":
     job()
 
     ## 매일 특정 시간(예: 오전 9시, 오후 3시, 오후 9시)에 실행
-    # schedule.every().day.at("09:00").do(job)
-    # schedule.every().day.at("15:00").do(job)
-    # schedule.every().day.at("21:00").do(job)
-    # while True:
-    #     schedule.run_pending()
-    #     time.sleep(1)
+    #schedule.every().day.at("09:00").do(job)
+    #schedule.every().day.at("15:00").do(job)
+    #schedule.every().day.at("21:00").do(job)
+    #while True:
+    #    schedule.run_pending()
+    #    time.sleep(1)
