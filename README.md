@@ -28,7 +28,7 @@
 
 
 
-🛠 Technical Stack
+## 🛠 Technical Stack
 
 - Backend: Python 3.8+
 - AI/ML: OpenAI GPT-4, Technical Analysis Library
