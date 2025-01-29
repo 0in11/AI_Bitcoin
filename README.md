@@ -25,13 +25,14 @@
   - SQLite 데이터베이스에 거래 내역 저장
   - 투자 성과 자동 계산
   - 거래 분석 및 개선점 도출
+  - streamlit 기반 실시간 거래 내역 및 성과 분석 대시보드
 
 
 
 ## 🛠 Technical Stack
 
-- Backend: Python 3.8+
-- AI/ML: OpenAI GPT-4, Technical Analysis Library
+- Backend: Python 3.8+, AWS EC2 (Ubuntu 20.04)
+- AI: OpenAI GPT-4
 - Database: SQLite
 - APIs: Upbit API, Alternative.me API
 - Libraries:
@@ -39,7 +40,7 @@
   - PyUpbit (거래소 API)
   - Pandas (데이터 처리)
   - TA-Lib (기술적 분석)
-
+  - Streamlit (대시보드)
 <br/>
 Inspiration of JOCOING's Youtube
 
