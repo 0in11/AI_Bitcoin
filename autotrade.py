@@ -200,32 +200,13 @@ class NewsCrawler:
         """검색어로 뉴스 검색"""
         self.driver.get("https://www.google.com/search?q=%EB%89%B4%EC%8A%A4&tbm=nws")
         time.sleep(5)
-
-        try:
-            # iframe이 있는지 확인
-            iframes = self.driver.find_elements(By.TAG_NAME, "iframe")
-            if iframes:
-                # iframe으로 전환
-                self.driver.switch_to.frame(iframes[0])
-                
-                # 그 다음 검색창 찾기
-                search_box = self.driver.find_element("xpath", "/html/body/span/div/div/div/form/div[1]/div[1]/div[3]/div/div[2]/textarea")
-                search_box.clear()
-                search_box.send_keys(keyword, Keys.ENTER)
-                
-                # 다시 기본 컨텐츠로 전환
-                self.driver.switch_to.default_content()
-        except Exception as e:
-            print(f"Error: {e}")
-            # 에러 발생 시 현재 페이지 소스 출력
-            print("Page source:", self.driver.page_source)
     
         # 검색창에 키워드 입력
-        """search_box = self.driver.find_element("xpath", 
+        search_box = self.driver.find_element("xpath", 
             "/html/body/span/div/div/div/form/div[1]/div[1]/div[3]/div/div[2]/textarea")
         search_box.clear() # 검색창 키워드 삭제
         search_box.send_keys(keyword, Keys.ENTER)
-        time.sleep(1)"""
+        time.sleep(1)
         
     def crawl_news(self):
         """상위 5개 뉴스의 제목과 날짜만 크롤링"""
