@@ -1,6 +1,6 @@
 # 📈"AI BITCOIN AUTOTRADING"📈
 
-파이썬 비트코인 자동매매 코드로 OpenAI의 GPT-4o를 활용하여 차트 분석, 뉴스 수집, 기술적 지표를 종합적으로 분석하여 매매 결정을 수행합니다. 
+GPT-4 기반 비트코인 자동매매 시스템으로, AWS EC2에서 실시간으로 구동되며 Streamlit 대시보드를 통해 모니터링할 수 있습니다.
 
 
 ## 🏗️ ARCHITECTURE
@@ -31,16 +31,16 @@
 
 ## 🛠 Technical Stack
 
-- Backend: Python 3.8+, AWS EC2 (Ubuntu 20.04)
-- AI: OpenAI GPT-4
+- Backend: AWS EC2 (Ubuntu 20.04)
 - Database: SQLite
-- APIs: Upbit API, Alternative.me API
+- APIs: Upbit API, Alternative.me API, OpenAI GPT-4o
 - Libraries:
   - Selenium (웹 크롤링)
   - PyUpbit (거래소 API)
   - Pandas (데이터 처리)
   - TA-Lib (기술적 분석)
   - Streamlit (대시보드)
+  - Schedule (작업 스케줄링)
 <br/>
 Inspiration of JOCOING's Youtube
 
